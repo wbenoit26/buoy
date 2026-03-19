@@ -38,6 +38,7 @@ class Aframe(AframeConfig):
         model_weights: Optional[str] = "aframe.pt",
         config: Optional[str] = "aframe_config.yaml",
         device: Optional[str] = None,
+        revision: str | None = None,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -48,6 +49,7 @@ class Aframe(AframeConfig):
             filename=model_weights,
             repo_id=REPO_ID,
             descriptor="Aframe model weights",
+            revision=revision,
         )
         self.model = torch.jit.load(model_weights).to(self.device)
 
@@ -55,6 +57,7 @@ class Aframe(AframeConfig):
             filename=config,
             repo_id=REPO_ID,
             descriptor="Aframe model config",
+            revision=revision,
         )
 
         parser = ArgumentParser()

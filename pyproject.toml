@@ -54,6 +54,7 @@ include = ["buoy"]
 
 [tool.ruff]
 line-length = 79
+extend-include = ["T201"]
 
 [tool.ruff.lint]
 extend-safe-fixes = ["C408"]

@@ -22,6 +22,7 @@ def get_local_or_hf(
     filename: Path,
     repo_id: str,
     descriptor: str,
+    revision: str | None = None,
 ):
     """
     Determine whether a given file exists locally or in a HuggingFace
@@ -34,6 +35,9 @@ def get_local_or_hf(
         filename: The name of the file to load.
         repo_id: The HuggingFace repository ID.
         descriptor: A description of the file for logging.
+        revision:
+            The HuggingFace repository revision (branch, tag, or commit
+            hash) to download from. If None, uses the default branch.
 
     Returns:
         The path to the file.
@@ -47,7 +51,9 @@ def get_local_or_hf(
                 f"Downloading {descriptor} from HuggingFace "
                 "or loading from cache"
             )
-            return hf_hub_download(repo_id=repo_id, filename=str(filename))
+            return hf_hub_download(
+                repo_id=repo_id, filename=str(filename), revision=revision
+            )
         except EntryNotFoundError as e:
             raise ValueError(
                 f"{descriptor} {filename} not found locally or in "
@@ -102,31 +108,37 @@ def slice_amplfi_data(
 
 
 def get_data(
-    event: str,
+    event: str | float,
     sample_rate: float,
     psd_length: float,
     datadir: Path,
+    ifos: list[str] | None = None,
 ):
+    event = str(event)
     if event.startswith("GW"):
         event_time = gwosc.datasets.event_gps(event)
         ifos = sorted(gwosc.datasets.event_detectors(event))
-    else:
+    elif event.startswith("G"):
         client = GraceDb()
-        if event.startswith("G"):
-            response = client.event(event).json()
-            event_time = response["gpstime"]
-            ifos = response["instruments"].split(",")
-        elif event.startswith("S"):
-            response = client.superevent(event).json()
-            event_time = response["preferred_event_data"]["gpstime"]
-            ifos = response["preferred_event_data"]["instruments"].split(",")
-        else:
+        response = client.event(event).json()
+        event_time = response["gpstime"]
+        ifos = response["instruments"].split(",")
+    elif event.startswith("S"):
+        client = GraceDb()
+        response = client.superevent(event).json()
+        event_time = response["preferred_event_data"]["gpstime"]
+        ifos = response["preferred_event_data"]["instruments"].split(",")
+    else:
+        try:
+            event_time = float(event)
+        except ValueError as e:
             raise ValueError(
                 f"Event {event} is not a valid event name. "
                 "Should be a valid GPS time, a known gravitational wave "
                 "event name (e.g. GW123456), or a GraceDB event or superevent "
                 "(e.g. G123456 or S123456)."
-            )
+            ) from e
+        ifos = ifos or ["H1", "L1", "V1"]
 
     # Make sure things start at an integer time for consistency.
     # Take data from psd_length * (-1.5, 0.5) around the event
@@ -145,7 +157,7 @@ def get_data(
 
         ts_dict = TimeSeriesDict()
         for ifo in ifos:
-            if start < 1269363618:
+            if start < 1389456018:
                 ts_dict[ifo] = TimeSeries.fetch_open_data(ifo, start, end)
             else:
                 ts_dict[ifo] = TimeSeries.get(STRAIN_CHANNELS[ifo], start, end)
