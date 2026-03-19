@@ -37,6 +37,7 @@ class Amplfi(AmplfiConfig):
         model_weights: Optional[str] = "amplfi-hlv.ckpt",
         config: Optional[str] = "amplfi-hlv-config.yaml",
         device: Optional[str] = None,
+        revision: str | None = None,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -47,11 +48,13 @@ class Amplfi(AmplfiConfig):
             filename=model_weights,
             repo_id=REPO_ID,
             descriptor="AMPLFI model weights",
+            revision=revision,
         )
         config = get_local_or_hf(
             filename=config,
             repo_id=REPO_ID,
             descriptor="AMPLFI model config",
+            revision=revision,
         )
 
         parser = ArgumentParser()

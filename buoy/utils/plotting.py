@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -82,9 +82,10 @@ def plot_amplfi_result(
     nside: int,
     min_samples_per_pix: int,
     use_distance: bool,
-    ifos: List[str],
+    ifos: list[str],
     datadir: Path,
     plotdir: Path,
+    corner_parameters: list[str] | None = None,
 ):
     """
     Plot the skymap and corner plot from amplfi
@@ -118,7 +119,8 @@ def plot_amplfi_result(
 
     corner_fname = plotdir / f"corner_plot_{suffix}.png"
     result.plot_corner(
-        parameters=[
+        parameters=corner_parameters
+        or [
             "chirp_mass",
             "mass_ratio",
             "distance",

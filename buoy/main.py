@@ -2,8 +2,8 @@ import logging
 import sys
 import warnings
 from pathlib import Path
-from typing import List, Optional, Union
 
+import h5py
 import numpy as np
 import torch
 
@@ -18,23 +18,31 @@ from .utils.plotting import (
 
 
 def main(
-    events: Union[str, List[str]],
+    events: str | list[str],
     outdir: Path,
     samples_per_event: int = 20000,
     nside: int = 64,
     min_samples_per_pix: int = 5,
     use_distance: bool = True,
-    aframe_weights: Optional[Path] = None,
-    amplfi_hl_weights: Optional[Path] = None,
-    amplfi_hlv_weights: Optional[Path] = None,
-    aframe_config: Optional[Path] = None,
-    amplfi_hl_config: Optional[Path] = None,
-    amplfi_hlv_config: Optional[Path] = None,
+    aframe_weights: Path | None = None,
+    amplfi_hl_weights: Path | None = None,
+    amplfi_hlv_weights: Path | None = None,
+    aframe_config: Path | None = None,
+    amplfi_hl_config: Path | None = None,
+    amplfi_hlv_config: Path | None = None,
+    aframe_revision: str | None = None,
+    amplfi_revision: str | None = None,
     use_true_tc_for_amplfi: bool = False,
-    device: Optional[str] = None,
+    ifos: list[str] | None = None,
+    device: str | None = None,
     to_html: bool = False,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     verbose: bool = False,
+    run_aframe: bool = True,
+    run_amplfi: bool = True,
+    generate_plots: bool = True,
+    force: bool = False,
+    corner_parameters: list[str] | None = None,
 ):
     """
     Main function to run Aframe and AMPLFI on the given events
@@ -42,7 +50,10 @@ def main(
 
     Args:
         events:
-            Gravitational wave event name(s) to process.
+            Gravitational wave event name(s) to process. Accepts known
+            event names (e.g. GW150914), GraceDB events (e.g. G363842),
+            GraceDB superevents (e.g. S200213t), or GPS times
+            (e.g. 1187008882.4).
         outdir:
             Output directory to save results.
         samples_per_event:
@@ -73,9 +84,21 @@ def main(
         amplfi_hlv_config:
             Path to AMPLFI HLV config file. Can be a local path
             or in the ML4GW/amplfi Hugging Face repository.
+        aframe_revision:
+            HuggingFace repository revision (branch, tag, or commit
+            hash) for Aframe model weights and config. If None, uses
+            the default branch.
+        amplfi_revision:
+            HuggingFace repository revision (branch, tag, or commit
+            hash) for AMPLFI model weights and config. If None, uses
+            the default branch.
         use_true_tc_for_amplfi:
             If True, use the true time of coalescence for AMPLFI.
             Else, use the merger time inferred from Aframe.
+        ifos:
+            List of detectors to use when fetching data for a GPS time
+            event. Ignored for named events (GW/G/S), which look up
+            detectors automatically. Defaults to ["H1", "L1", "V1"].
         device:
             Device to run the models on ("cpu" or "cuda").
         to_html:
@@ -84,6 +107,21 @@ def main(
             Random seed for reproducibility of AMPLFI results.
         verbose:
             If True, log at the DEBUG level. Else, log at INFO level.
+        run_aframe:
+            If True, run Aframe inference and save outputs. If False,
+            load previously saved Aframe outputs if available.
+        run_amplfi:
+            If True, run AMPLFI inference and save posterior samples.
+            If False, skip parameter estimation and PE plots.
+        generate_plots:
+            If True, generate all output plots. If False, skip plotting.
+        force:
+            If True, reprocess events even if output files already exist.
+            If False, skip events whose inference outputs are all present.
+        corner_parameters:
+            List of parameter names to include in the AMPLFI corner plot.
+            Defaults to ["chirp_mass", "mass_ratio", "distance",
+            "mass_1", "mass_2"].
     """
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     logging.basicConfig(
@@ -122,29 +160,47 @@ def main(
         model_weights=aframe_weights or "aframe.pt",
         config=aframe_config or "aframe_config.yaml",
         device=device,
+        revision=aframe_revision,
     )
 
     amplfi_hl = Amplfi(
         model_weights=amplfi_hl_weights or "amplfi-hl.ckpt",
         config=amplfi_hl_config or "amplfi-hl-config.yaml",
         device=device,
+        revision=amplfi_revision,
     )
 
     amplfi_hlv = Amplfi(
         model_weights=amplfi_hlv_weights or "amplfi-hlv.ckpt",
         config=amplfi_hlv_config or "amplfi-hlv-config.yaml",
         device=device,
+        revision=amplfi_revision,
     )
 
     # TODO: should we check that the sample rate for each model is the same?
 
     if not isinstance(events, list):
         events = [events]
+
+    default_ifos = ifos
     for event in events:
-        datadir = outdir / event / "data"
-        plotdir = outdir / event / "plots"
+        datadir = outdir / str(event) / "data"
+        plotdir = outdir / str(event) / "plots"
         datadir.mkdir(parents=True, exist_ok=True)
         plotdir.mkdir(parents=True, exist_ok=True)
+
+        aframe_output_file = datadir / "aframe_outputs.h5"
+        amplfi_output_file = datadir / "posterior_samples.dat"
+
+        if not force:
+            aframe_done = aframe_output_file.exists()
+            amplfi_done = not run_amplfi or amplfi_output_file.exists()
+            if aframe_done and amplfi_done:
+                logging.info(
+                    f"Skipping {event}: outputs already present. "
+                    "Use --force to reprocess."
+                )
+                continue
 
         logging.info("Fetching or loading data")
         data, ifos, t0, event_time = get_data(
@@ -152,88 +208,130 @@ def main(
             sample_rate=aframe.sample_rate,
             psd_length=aframe.psd_length,
             datadir=datadir,
+            ifos=default_ifos,
         )
         data = torch.Tensor(data).double()
         data = data.to(device)
 
-        logging.info("Running Aframe")
+        amplfi_model = amplfi_hl if data.shape[1] == 2 else amplfi_hlv
 
-        times, ys, timing_integrated, signif_integrated = aframe(
-            data[:, :2], t0
-        )
+        if run_aframe:
+            logging.info("Running Aframe")
+            times, ys, timing_integrated, signif_integrated = aframe(
+                data[:, :2], t0
+            )
+            logging.info("Saving Aframe outputs")
+            with h5py.File(aframe_output_file, "w") as f:
+                f.create_dataset("times", data=times)
+                f.create_dataset("ys", data=ys)
+                f.create_dataset("timing_integrated", data=timing_integrated)
+                f.create_dataset("signif_integrated", data=signif_integrated)
+        else:
+            logging.info("Loading saved Aframe outputs")
+            if not aframe_output_file.exists():
+                raise FileNotFoundError(
+                    f"Aframe output file {aframe_output_file} not found. "
+                    "Run with run_aframe=True first."
+                )
+            with h5py.File(aframe_output_file, "r") as f:
+                times = f["times"][:]
+                ys = f["ys"][:]
+                timing_integrated = f["timing_integrated"][:]
+                signif_integrated = f["signif_integrated"][:]
+
         if use_true_tc_for_amplfi:
             tc = event_time
         else:
             tc = times[np.argmax(timing_integrated)] + aframe.time_offset
 
-        logging.info("Running AMPLFI model")
-        amplfi = amplfi_hl if data.shape[1] == 2 else amplfi_hlv
-        result = amplfi(
-            data=data,
-            t0=t0,
-            tc=tc,
-            samples_per_event=samples_per_event,
-        )
+        if run_amplfi:
+            logging.info("Running AMPLFI model")
+            result = amplfi_model(
+                data=data,
+                t0=t0,
+                tc=tc,
+                samples_per_event=samples_per_event,
+            )
 
-        # Compute whitened data for plotting later
-        # Use the first psd_length seconds of data
-        # to calculate the PSD and whiten the rest
-        idx = int(amplfi.sample_rate * amplfi.psd_length)
-        psd = amplfi.spectral_density(data[..., :idx])
-        whitened = amplfi.whitener(data[..., idx:], psd).cpu().numpy()
-        whitened = np.squeeze(whitened)
-        whitened_start = t0 + amplfi.psd_length + amplfi.fduration / 2
-        whitened_end = (
-            t0 + data.shape[-1] / amplfi.sample_rate - amplfi.fduration / 2
-        )
-        whitened_times = np.arange(
-            whitened_start, whitened_end, 1 / amplfi.sample_rate
-        )
-        whitened_data = np.concatenate([whitened_times[None], whitened])
-        np.save(datadir / "whitened_data.npy", whitened_data)
+            # Compute whitened data for plotting later
+            # Use the first psd_length seconds of data
+            # to calculate the PSD and whiten the rest
+            idx = int(amplfi_model.sample_rate * amplfi_model.psd_length)
+            psd = amplfi_model.spectral_density(data[..., :idx])
+            whitened = (
+                amplfi_model.whitener(data[..., idx:], psd).cpu().numpy()
+            )
+            whitened = np.squeeze(whitened)
+            whitened_start = (
+                t0 + amplfi_model.psd_length + amplfi_model.fduration / 2
+            )
+            whitened_end = (
+                t0
+                + data.shape[-1] / amplfi_model.sample_rate
+                - amplfi_model.fduration / 2
+            )
+            whitened_times = np.arange(
+                whitened_start, whitened_end, 1 / amplfi_model.sample_rate
+            )
+            whitened_data = np.concatenate([whitened_times[None], whitened])
+            np.save(datadir / "whitened_data.npy", whitened_data)
 
-        logging.info("Creating Q-plots")
-        q_plots(
-            data=data.squeeze().cpu().numpy(),
-            t0=t0,
-            plotdir=plotdir,
-            gpstime=event_time,
-            sample_rate=amplfi.sample_rate,
-            amplfi_highpass=amplfi.highpass,
-        )
+            result.save_posterior_samples(filename=amplfi_output_file)
 
-        logging.info("Plotting Aframe response")
-        plot_aframe_response(
-            times=times,
-            ys=ys,
-            timing_integrated=timing_integrated,
-            signif_integrated=signif_integrated,
-            whitened=whitened,
-            whitened_times=whitened_times,
-            t0=t0,
-            tc=tc,
-            event_time=event_time,
-            plotdir=plotdir,
-        )
+        if generate_plots:
+            whitened_data_file = datadir / "whitened_data.npy"
+            if not whitened_data_file.exists():
+                logging.warning(
+                    "Whitened data not found, skipping plots that require it. "
+                    "Run with run_amplfi=True to generate whitened data."
+                )
+            else:
+                if not run_amplfi:
+                    whitened_arr = np.load(whitened_data_file)
+                    whitened_times = whitened_arr[0]
+                    whitened = whitened_arr[1:]
 
-        result.save_posterior_samples(
-            filename=datadir / "posterior_samples.dat"
-        )
-        logging.info("Plotting AMPLFI result")
-        plot_amplfi_result(
-            result=result,
-            nside=nside,
-            min_samples_per_pix=min_samples_per_pix,
-            use_distance=use_distance,
-            ifos=ifos,
-            datadir=datadir,
-            plotdir=plotdir,
-        )
+                logging.info("Creating Q-plots")
+                q_plots(
+                    data=data.squeeze().cpu().numpy(),
+                    t0=t0,
+                    plotdir=plotdir,
+                    gpstime=event_time,
+                    sample_rate=amplfi_model.sample_rate,
+                    amplfi_highpass=amplfi_model.highpass,
+                )
+
+                logging.info("Plotting Aframe response")
+                plot_aframe_response(
+                    times=times,
+                    ys=ys,
+                    timing_integrated=timing_integrated,
+                    signif_integrated=signif_integrated,
+                    whitened=whitened,
+                    whitened_times=whitened_times,
+                    t0=t0,
+                    tc=tc,
+                    event_time=event_time,
+                    plotdir=plotdir,
+                )
+
+            if run_amplfi:
+                logging.info("Plotting AMPLFI result")
+                plot_amplfi_result(
+                    result=result,
+                    nside=nside,
+                    min_samples_per_pix=min_samples_per_pix,
+                    use_distance=use_distance,
+                    ifos=ifos,
+                    datadir=datadir,
+                    plotdir=plotdir,
+                    corner_parameters=corner_parameters,
+                )
 
         if to_html:
             logging.info("Generating HTML page")
             generate_html(
                 plotdir=plotdir,
-                output_file=outdir / event / "summary.html",
-                label=event + " Event Summary",
+                output_file=outdir / str(event) / "summary.html",
+                label=str(event) + " Event Summary",
             )
