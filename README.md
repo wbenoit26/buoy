@@ -1,35 +1,141 @@
-# Installation
+# buoy
 
-This library is `pip` installable with
+**buoy** deploys trained [Aframe](https://github.com/ML4GW/aframe) and [AMPLFI](https://github.com/ML4GW/amplfi) models on gravitational wave events, producing detection statistics and parameter estimation outputs.
+
+- **Aframe** is a neural network that scans strain data and assigns a detection statistic at each time step. buoy runs it over a segment of data surrounding an event and reports the integrated detection statistic alongside the raw network output.
+- **AMPLFI** is a normalizing flow that performs rapid Bayesian parameter estimation. Given a coalescence time (inferred from Aframe or provided directly), it generates posterior samples for intrinsic and extrinsic parameters and produces a sky localization map.
+
+Model weights (~320 MB total) are downloaded automatically from [HuggingFace](https://huggingface.co/ML4GW) on first use and cached locally.
+
+---
+
+## Installation
 
 ```bash
 pip install ml4gw-buoy
 ```
 
-It is recommended that you install `buoy` in a virtual environment such as `conda`.
-
-# Usage
-
-The function of this library is to run trained [Aframe](https://github.com/ML4GW/aframe) and [AMPLFI](https://github.com/ML4GW/amplfi) models over a gravitaional wave event reported by the LIGO-Virgo-KAGRA collaboration during their third observing run, O3.
-
-Note: the trained models will be downloaded from [HuggingFace](https://huggingface.co/ML4GW) and require about 320 MB of space in total. 
-
-To produce model outputs, first identify an event of interest. This can either be a catalog event, e.g., from [GWTC-3](https://arxiv.org/pdf/2111.03606), formatted like GW190521, or it can be a G event or superevent from [GraceDB](https://gracedb.ligo.org), formatted like G363842 or S200213t. Note that LIGO credentials are required to use the latter option. To analyze events from data that is not yet released, a container with frame-discovery dependencies can be pulled with `apptainer pull /home/aframe/images/aframe/buoy.sif docker://ghcr.io/ml4gw/buoy/buoy:v0.4.0`.
-
-Once an event has been identified, run:
+A virtual environment is recommended:
 
 ```bash
-buoy --events <EVENT_NAME> --outdir <OUTPUT_DIRECTORY>
+conda create -n buoy python=3.11
+conda activate buoy
+pip install ml4gw-buoy
 ```
 
-The output directory is structured as follows will contain a directory matching the name of the event.
-Inside, there will be a `data` directory containing data created during the analysis, and a `plots`
-directory containing Aframe's response to the event as well as a skymap and corner plot from AMPLFI.
+### Analyzing unreleased data
 
-Multiple events can be specified at once, e.g.:
+Open data (O1–O4a) is fetched automatically. For events from data not yet publicly released, frame-discovery dependencies are required. A pre-built container with those dependencies is available:
 
 ```bash
-buoy --events '["GW190828_063405", "GW190521", "S200213t"]' --outdir <OUTPUT_DIRECTORY>
+apptainer pull buoy.sif docker://ghcr.io/ml4gw/buoy/buoy:latest
 ```
 
-About 10 MB of space is required for each event.
+---
+
+## Supported event types
+
+| Format | Example | Source |
+|--------|---------|--------|
+| GWTC catalog event | `GW150914` | [GWOSC](https://gw-openscience.org) |
+| GraceDB event | `G363842` | [GraceDB](https://gracedb.ligo.org) (requires LIGO credentials) |
+| GraceDB superevent | `S200213t` | [GraceDB](https://gracedb.ligo.org) (requires LIGO credentials) |
+| GPS time | `1187008882.4` | User-supplied |
+
+When using a GPS time, buoy defaults to fetching data for H1, L1, and V1. Use `--ifos` to restrict the detector set.
+
+---
+
+## Usage
+
+### Single event
+
+```bash
+buoy --events GW150914 --outdir ./results
+```
+
+### Multiple events
+
+```bash
+buoy --events '["GW190521", "GW190828_063405", "S200213t"]' --outdir ./results
+```
+
+### GPS time event
+
+```bash
+buoy --events 1187008882.4 --outdir ./results --ifos '["H1", "L1"]'
+```
+
+### Config file
+
+All arguments can be stored in a YAML config file:
+
+```yaml
+# config.yaml
+events:
+  - GW190521
+  - GW190814
+outdir: ./results
+samples_per_event: 10000
+device: cuda
+```
+
+```bash
+buoy --config config.yaml
+```
+
+---
+
+## Output structure
+
+```
+<outdir>/
+└── <event>/
+    ├── data/
+    │   ├── <event>.hdf5          # Raw strain data
+    │   ├── aframe_outputs.hdf5     # Aframe times, detection statistics, integrated outputs
+    │   ├── posterior_samples.dat # AMPLFI posterior samples
+    │   ├── whitened_data.npy     # Whitened strain used for plotting
+    │   └── amplfi_<HL|HLV>.fits  # Skymap in FITS format
+    └── plots/
+        ├── aframe_response.png   # Detection statistic vs. time with whitened strain
+        ├── H1_qtransform.png     # Q-transform for H1
+        ├── L1_qtransform.png     # Q-transform for L1
+        ├── skymap_<HL|HLV>.png   # Mollweide sky localization map
+        └── corner_plot_<HL|HLV>.png  # Corner plot of posterior samples
+```
+
+---
+
+## CLI reference
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--events` | *(required)* | Event name(s) or GPS time(s) to analyze |
+| `--outdir` | *(required)* | Directory to write results |
+| `--samples_per_event` | `20000` | Number of AMPLFI posterior samples |
+| `--nside` | `64` | HEALPix resolution for the skymap |
+| `--min_samples_per_pix` | `5` | Minimum samples per pixel for distance ansatz |
+| `--use_distance` | `true` | Include distance in the 3D skymap |
+| `--aframe_weights` | HuggingFace | Path to Aframe TorchScript weights (`.pt`) |
+| `--amplfi_hl_weights` | HuggingFace | Path to AMPLFI HL checkpoint (`.ckpt`) |
+| `--amplfi_hlv_weights` | HuggingFace | Path to AMPLFI HLV checkpoint (`.ckpt`) |
+| `--aframe_config` | HuggingFace | Path to config of Aframe model config (`.yaml`) |
+| `--amplfi_hl_config` | HuggingFace | Path to config of AMPLFI HL model config (`.yaml`) |
+| `--amplfi_hlv_config` | HuggingFace | Path to config of AMPLFI HLV model config (`.yaml`) |
+| `--aframe_revision` | default branch | HuggingFace revision for Aframe weights |
+| `--amplfi_revision` | default branch | HuggingFace revision for AMPLFI weights |
+| `--use_true_tc_for_amplfi` | `false` | Use catalog/GraceDB time instead of Aframe-inferred time |
+| `--ifos` | `["H1","L1","V1"]` | Detectors to use for GPS time events |
+| `--device` | auto | `cpu` or `cuda` |
+| `--seed` | `None` | Random seed for AMPLFI reproducibility |
+| `--verbose` | `false` | Enable DEBUG-level logging |
+| `--run_aframe` | `true` | Run Aframe inference; if false, load saved outputs |
+| `--run_amplfi` | `true` | Run AMPLFI inference; if false, skip PE |
+| `--generate_plots` | `true` | Generate output plots |
+| `--force` | `false` | Reprocess events even if outputs already exist |
+| `--corner_parameters` | see below | Parameters to include in the corner plot |
+| `--to_html` | `false` | Generate an HTML summary page |
+| `--config` | — | Path to a YAML config file |
+
+Default corner plot parameters: `chirp_mass`, `mass_ratio`, `distance`, `mass_1`, `mass_2`.
