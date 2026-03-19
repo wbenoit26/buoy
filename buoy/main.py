@@ -189,7 +189,7 @@ def main(
         datadir.mkdir(parents=True, exist_ok=True)
         plotdir.mkdir(parents=True, exist_ok=True)
 
-        aframe_output_file = datadir / "aframe_outputs.h5"
+        aframe_output_file = datadir / "aframe_outputs.hdf5"
         amplfi_output_file = datadir / "posterior_samples.dat"
 
         if not force:
