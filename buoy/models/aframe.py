@@ -39,19 +39,21 @@ class Aframe(AframeConfig):
         config: str | Path = "aframe_config.yaml",
         device: str | None = None,
         revision: str | None = None,
+        load_weights: bool = True,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         logging.debug(f"Using device: {self.device}")
 
-        model_weights = get_local_or_hf(
-            filename=model_weights,
-            repo_id=REPO_ID,
-            descriptor="Aframe model weights",
-            revision=revision,
-        )
-        self.model = torch.jit.load(model_weights).to(self.device)
+        if load_weights:
+            weights_path = get_local_or_hf(
+                filename=model_weights,
+                repo_id=REPO_ID,
+                descriptor="Aframe model weights",
+                revision=revision,
+            )
+            self.model = torch.jit.load(weights_path).to(self.device)
 
         config = get_local_or_hf(
             filename=config,
@@ -150,6 +152,11 @@ class Aframe(AframeConfig):
         """
         Run the aframe model over the data
         """
+        if not hasattr(self, "model"):
+            raise RuntimeError(
+                "Aframe model weights were not loaded. "
+                "Re-initialize with load_weights=True."
+            )
         if data.shape[-1] < self.minimum_data_size:
             raise ValueError(
                 f"Data size {data.shape[-1]} is less than the minimum "

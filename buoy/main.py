@@ -161,6 +161,7 @@ def main(
         config=aframe_config or "aframe_config.yaml",
         device=device,
         revision=aframe_revision,
+        load_weights=run_aframe,
     )
 
     amplfi_hl = Amplfi(
@@ -168,6 +169,7 @@ def main(
         config=amplfi_hl_config or "amplfi-hl-config.yaml",
         device=device,
         revision=amplfi_revision,
+        load_weights=run_amplfi,
     )
 
     amplfi_hlv = Amplfi(
@@ -175,6 +177,7 @@ def main(
         config=amplfi_hlv_config or "amplfi-hlv-config.yaml",
         device=device,
         revision=amplfi_revision,
+        load_weights=run_amplfi,
     )
 
     # TODO: should we check that the sample rate for each model is the same?

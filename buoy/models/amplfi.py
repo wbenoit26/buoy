@@ -40,18 +40,13 @@ class Amplfi(AmplfiConfig):
         config: str | Path = "amplfi-hlv-config.yaml",
         device: str | None = None,
         revision: str | None = None,
+        load_weights: bool = True,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         logging.debug(f"Using device: {self.device}")
 
-        model_weights = get_local_or_hf(
-            filename=model_weights,
-            repo_id=REPO_ID,
-            descriptor="AMPLFI model weights",
-            revision=revision,
-        )
         config = get_local_or_hf(
             filename=config,
             repo_id=REPO_ID,
@@ -74,13 +69,20 @@ class Amplfi(AmplfiConfig):
 
         super().__init__(**vars(args))
 
-        model, scaler = self.load_model(
-            args.architecture,
-            model_weights,
-            len(args.inference_params),
-        )
-        self.model = model.to(self.device)
-        self.scaler = scaler.to(self.device)
+        if load_weights:
+            weights_path = get_local_or_hf(
+                filename=model_weights,
+                repo_id=REPO_ID,
+                descriptor="AMPLFI model weights",
+                revision=revision,
+            )
+            model, scaler = self.load_model(
+                args.architecture,
+                weights_path,
+                len(args.inference_params),
+            )
+            self.model = model.to(self.device)
+            self.scaler = scaler.to(self.device)
 
         self.configure_preprocessing()
 
@@ -154,6 +156,11 @@ class Amplfi(AmplfiConfig):
         tc: float,
         samples_per_event: int,
     ) -> "AmplfiResult":
+        if not hasattr(self, "model"):
+            raise RuntimeError(
+                "AMPLFI model weights were not loaded. "
+                "Re-initialize with load_weights=True."
+            )
         if data.shape[-1] < self.minimum_data_size:
             raise ValueError(
                 f"Data size {data.shape[-1]} is less than the minimum "
