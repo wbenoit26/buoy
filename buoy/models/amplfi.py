@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import torch
 from jsonargparse import ArgumentParser
@@ -22,21 +22,21 @@ class AmplfiConfig:
     parameter_sampler: "AmplfiPrior"
     sample_rate: float
     kernel_length: float
-    inference_params: List[str]
+    inference_params: list[str]
     event_position: float
     psd_length: float
     fduration: float
     fftlength: float
     highpass: float
-    lowpass: Optional[float] = None
+    lowpass: float | None = None
 
 
 class Amplfi(AmplfiConfig):
     def __init__(
         self,
-        model_weights: Optional[str] = "amplfi-hlv.ckpt",
-        config: Optional[str] = "amplfi-hlv-config.yaml",
-        device: Optional[str] = None,
+        model_weights: str | None = "amplfi-hlv.ckpt",
+        config: str | None = "amplfi-hlv-config.yaml",
+        device: str | None = None,
         revision: str | None = None,
     ):
         if device is None:

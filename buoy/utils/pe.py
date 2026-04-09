@@ -1,13 +1,13 @@
 import logging
 from typing import TYPE_CHECKING
 
+import astropy.units as u
 import lal
 import numpy as np
 import pandas as pd
 import torch
 from amplfi.utils.result import AmplfiResult
 from astropy import cosmology
-import astropy.units as u
 from ml4gw.transforms import ChannelWiseScaler
 from ml4gw.waveforms.conversion import chirp_mass_and_mass_ratio_to_components
 from scipy.interpolate import interp1d

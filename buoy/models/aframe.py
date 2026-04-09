@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import torch
@@ -29,15 +28,15 @@ class AframeConfig:
     batch_size: int
     aframe_right_pad: float
     integration_window_length: float
-    lowpass: Optional[float] = None
+    lowpass: float | None = None
 
 
 class Aframe(AframeConfig):
     def __init__(
         self,
-        model_weights: Optional[str] = "aframe.pt",
-        config: Optional[str] = "aframe_config.yaml",
-        device: Optional[str] = None,
+        model_weights: str | None = "aframe.pt",
+        config: str | None = "aframe_config.yaml",
+        device: str | None = None,
         revision: str | None = None,
     ):
         if device is None:

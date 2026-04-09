@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 import torch
 from ml4gw.transforms import SpectralDensity, Whiten
@@ -25,7 +25,7 @@ class BackgroundSnapshotter(torch.nn.Module):
         state_length -= 1 / inference_sampling_rate
         self.state_size = int(state_length * sample_rate)
 
-    def forward(self, update: Tensor, snapshot: Tensor) -> Tuple[Tensor, ...]:
+    def forward(self, update: Tensor, snapshot: Tensor) -> tuple[Tensor, ...]:
         x = torch.cat([snapshot, update], axis=-1)
         snapshot = x[:, :, -self.state_size :]
         return x, snapshot
@@ -68,8 +68,8 @@ class PsdEstimator(torch.nn.Module):
         length: float,
         sample_rate: float,
         fftlength: float,
-        window: Optional[torch.Tensor] = None,
-        overlap: Optional[float] = None,
+        window: torch.Tensor | None = None,
+        overlap: float | None = None,
         average: str = "median",
         fast: bool = True,
     ) -> None:
@@ -79,7 +79,7 @@ class PsdEstimator(torch.nn.Module):
             sample_rate, fftlength, overlap, average, window=window, fast=fast
         )
 
-    def forward(self, X: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, X: Tensor) -> tuple[Tensor, Tensor]:
         splits = [X.size(-1) - self.size, self.size]
         background, X = torch.split(X, splits, dim=-1)
 
@@ -109,9 +109,9 @@ class BatchWhitener(torch.nn.Module):
         batch_size: int,
         fduration: float,
         fftlength: float,
-        augmentor: Optional[Callable] = None,
-        highpass: Optional[float] = None,
-        lowpass: Optional[float] = None,
+        augmentor: Callable | None = None,
+        highpass: float | None = None,
+        lowpass: float | None = None,
         return_whitened: bool = False,
     ) -> None:
         super().__init__()
@@ -147,7 +147,7 @@ class BatchWhitener(torch.nn.Module):
         else:
             raise ValueError(
                 "Expected input to be either 2 or 3 dimensional, "
-                "but found shape {}".format(x.shape)
+                f"but found shape {x.shape}"
             )
 
         x, psd = self.psd_estimator(x)
