@@ -30,6 +30,15 @@ class AframeConfig:
 
 
 class Aframe(AframeConfig, BuoyModel):
+    """
+    Aframe neural network model for gravitational wave detection.
+
+    Wraps a trained TorchScript model and its associated preprocessing
+    pipeline. Config attributes (``sample_rate``, ``psd_length``, etc.)
+    are always loaded; neural network weights are only loaded when
+    ``load_weights=True``.
+    """
+
     def __init__(
         self,
         model_weights: str | Path = "aframe.pt",
@@ -39,6 +48,28 @@ class Aframe(AframeConfig, BuoyModel):
         load_weights: bool = True,
         cache_dir: str | Path | None = None,
     ):
+        """
+        Args:
+            model_weights:
+                Path to TorchScript weights (`.pt`) or filename in the
+                ``ML4GW/aframe`` HuggingFace repository.
+            config:
+                Path to YAML config or filename in the ``ML4GW/aframe``
+                HuggingFace repository.
+            device:
+                Device to run inference on (``"cpu"`` or ``"cuda"``).
+                If ``None``, uses CUDA when available, otherwise CPU.
+            revision:
+                HuggingFace repository revision (branch, tag, or commit
+                hash). If ``None``, uses the default branch.
+            load_weights:
+                If ``True``, download and load the neural network weights.
+                Set to ``False`` to load only the config (e.g. to inspect
+                hyperparameters without allocating GPU memory).
+            cache_dir:
+                Local directory for HuggingFace download cache. If
+                ``None``, uses the default ``~/.cache/huggingface``.
+        """
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
