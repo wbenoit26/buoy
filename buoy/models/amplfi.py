@@ -7,6 +7,7 @@ import torch
 from jsonargparse import ArgumentParser
 from ml4gw.transforms import ChannelWiseScaler, SpectralDensity, Whiten
 
+from buoy.models.base import BuoyModel
 from buoy.utils.data import get_local_or_hf, slice_amplfi_data
 from buoy.utils.pe import postprocess_samples, run_amplfi
 
@@ -33,7 +34,7 @@ class AmplfiConfig:
     lowpass: float | None = None
 
 
-class Amplfi(AmplfiConfig):
+class Amplfi(AmplfiConfig, BuoyModel):
     def __init__(
         self,
         model_weights: str | Path = "amplfi-hlv.ckpt",
@@ -113,23 +114,6 @@ class Amplfi(AmplfiConfig):
         scaler = ChannelWiseScaler(num_params)
         scaler.load_state_dict(scaler_weights)
         return model, scaler
-
-    def update_config(self, **kwargs):
-        """
-        Update the AMPLFI configuration with new parameters.
-
-        Warning: some changes may not be sensible given how
-        the model was trained (e.g., kernel_length, sample_rate).
-        Changing these parameters may lead to unexpected results.
-        """
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                raise ValueError(f"Invalid configuration parameter: {key}")
-
-        # Reconfigure preprocessing after updating parameters
-        self.configure_preprocessing()
 
     def configure_preprocessing(self) -> None:
         self.spectral_density = SpectralDensity(

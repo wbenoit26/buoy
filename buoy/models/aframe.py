@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from jsonargparse import ArgumentParser
 
+from buoy.models.base import BuoyModel
 from buoy.utils.data import get_local_or_hf
 from buoy.utils.preprocessing import BackgroundSnapshotter, BatchWhitener
 
@@ -28,7 +29,7 @@ class AframeConfig:
     lowpass: float | None = None
 
 
-class Aframe(AframeConfig):
+class Aframe(AframeConfig, BuoyModel):
     def __init__(
         self,
         model_weights: str | Path = "aframe.pt",
@@ -70,23 +71,6 @@ class Aframe(AframeConfig):
         self.online_offline_stride = int(
             self.inference_sampling_rate / self.offline_sampling_rate
         )
-
-    def update_config(self, **kwargs):
-        """
-        Update the Aframe configuration with new parameters.
-
-        Warning: some changes may not be sensible given how
-        the model was trained (e.g., kernel_length, sample_rate).
-        Changing these parameters may lead to unexpected results.
-        """
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                raise ValueError(f"Invalid configuration parameter: {key}")
-
-        # Reconfigure preprocessing after updating parameters
-        self.configure_preprocessing()
 
     def configure_preprocessing(self) -> None:
         self.whitener = BatchWhitener(
