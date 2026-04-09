@@ -99,7 +99,7 @@ def plot_amplfi_result(
         min_samples_per_pix_dist=min_samples_per_pix,
         metadata={"INSTRUME": ",".join(ifos)},
     )
-    fits_skymap = io.fits.table_to_hdu(skymap)
+    fits_skymap = io.fits.table_to_hdu(skymap)  # ty: ignore[possibly-missing-submodule]
     fits_fname = datadir / f"amplfi_{suffix}.fits"
     fits_skymap.writeto(fits_fname, overwrite=True)
     plot_fname = plotdir / f"skymap_{suffix}.png"

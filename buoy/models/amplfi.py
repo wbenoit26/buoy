@@ -7,6 +7,7 @@ import torch
 from jsonargparse import ArgumentParser
 from ml4gw.transforms import ChannelWiseScaler, SpectralDensity, Whiten
 
+from buoy.models.base import BuoyModel
 from buoy.utils.data import get_local_or_hf, slice_amplfi_data
 from buoy.utils.pe import postprocess_samples, run_amplfi
 
@@ -33,30 +34,27 @@ class AmplfiConfig:
     lowpass: float | None = None
 
 
-class Amplfi(AmplfiConfig):
+class Amplfi(AmplfiConfig, BuoyModel):
     def __init__(
         self,
         model_weights: str | Path = "amplfi-hlv.ckpt",
         config: str | Path = "amplfi-hlv-config.yaml",
         device: str | None = None,
         revision: str | None = None,
+        load_weights: bool = True,
+        cache_dir: str | Path | None = None,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         logging.debug(f"Using device: {self.device}")
 
-        model_weights = get_local_or_hf(
-            filename=model_weights,
-            repo_id=REPO_ID,
-            descriptor="AMPLFI model weights",
-            revision=revision,
-        )
         config = get_local_or_hf(
             filename=config,
             repo_id=REPO_ID,
             descriptor="AMPLFI model config",
             revision=revision,
+            cache_dir=cache_dir,
         )
 
         parser = ArgumentParser()
@@ -74,13 +72,21 @@ class Amplfi(AmplfiConfig):
 
         super().__init__(**vars(args))
 
-        model, scaler = self.load_model(
-            args.architecture,
-            model_weights,
-            len(args.inference_params),
-        )
-        self.model = model.to(self.device)
-        self.scaler = scaler.to(self.device)
+        if load_weights:
+            weights_path = get_local_or_hf(
+                filename=model_weights,
+                repo_id=REPO_ID,
+                descriptor="AMPLFI model weights",
+                revision=revision,
+                cache_dir=cache_dir,
+            )
+            model, scaler = self.load_model(
+                args.architecture,
+                weights_path,
+                len(args.inference_params),
+            )
+            self.model = model.to(self.device)
+            self.scaler = scaler.to(self.device)
 
         self.configure_preprocessing()
 
@@ -108,23 +114,6 @@ class Amplfi(AmplfiConfig):
         scaler = ChannelWiseScaler(num_params)
         scaler.load_state_dict(scaler_weights)
         return model, scaler
-
-    def update_config(self, **kwargs):
-        """
-        Update the AMPLFI configuration with new parameters.
-
-        Warning: some changes may not be sensible given how
-        the model was trained (e.g., kernel_length, sample_rate).
-        Changing these parameters may lead to unexpected results.
-        """
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                raise ValueError(f"Invalid configuration parameter: {key}")
-
-        # Reconfigure preprocessing after updating parameters
-        self.configure_preprocessing()
 
     def configure_preprocessing(self) -> None:
         self.spectral_density = SpectralDensity(
@@ -154,6 +143,11 @@ class Amplfi(AmplfiConfig):
         tc: float,
         samples_per_event: int,
     ) -> "AmplfiResult":
+        if not hasattr(self, "model"):
+            raise RuntimeError(
+                "AMPLFI model weights were not loaded. "
+                "Re-initialize with load_weights=True."
+            )
         if data.shape[-1] < self.minimum_data_size:
             raise ValueError(
                 f"Data size {data.shape[-1]} is less than the minimum "

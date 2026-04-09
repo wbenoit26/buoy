@@ -6,14 +6,11 @@ import numpy as np
 import torch
 from jsonargparse import ArgumentParser
 
+from buoy.models.base import BuoyModel
 from buoy.utils.data import get_local_or_hf
 from buoy.utils.preprocessing import BackgroundSnapshotter, BatchWhitener
 
 REPO_ID = "ML4GW/aframe"
-
-# TODO: Allow specification of a cache directory
-# TODO: When we have multiple model versions, provide
-# a way to specify which one to use
 
 
 @dataclass
@@ -32,32 +29,37 @@ class AframeConfig:
     lowpass: float | None = None
 
 
-class Aframe(AframeConfig):
+class Aframe(AframeConfig, BuoyModel):
     def __init__(
         self,
         model_weights: str | Path = "aframe.pt",
         config: str | Path = "aframe_config.yaml",
         device: str | None = None,
         revision: str | None = None,
+        load_weights: bool = True,
+        cache_dir: str | Path | None = None,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         logging.debug(f"Using device: {self.device}")
 
-        model_weights = get_local_or_hf(
-            filename=model_weights,
-            repo_id=REPO_ID,
-            descriptor="Aframe model weights",
-            revision=revision,
-        )
-        self.model = torch.jit.load(model_weights).to(self.device)
+        if load_weights:
+            weights_path = get_local_or_hf(
+                filename=model_weights,
+                repo_id=REPO_ID,
+                descriptor="Aframe model weights",
+                revision=revision,
+                cache_dir=cache_dir,
+            )
+            self.model = torch.jit.load(weights_path).to(self.device)
 
         config = get_local_or_hf(
             filename=config,
             repo_id=REPO_ID,
             descriptor="Aframe model config",
             revision=revision,
+            cache_dir=cache_dir,
         )
 
         parser = ArgumentParser()
@@ -69,23 +71,6 @@ class Aframe(AframeConfig):
         self.online_offline_stride = int(
             self.inference_sampling_rate / self.offline_sampling_rate
         )
-
-    def update_config(self, **kwargs):
-        """
-        Update the Aframe configuration with new parameters.
-
-        Warning: some changes may not be sensible given how
-        the model was trained (e.g., kernel_length, sample_rate).
-        Changing these parameters may lead to unexpected results.
-        """
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                raise ValueError(f"Invalid configuration parameter: {key}")
-
-        # Reconfigure preprocessing after updating parameters
-        self.configure_preprocessing()
 
     def configure_preprocessing(self) -> None:
         self.whitener = BatchWhitener(
@@ -150,6 +135,11 @@ class Aframe(AframeConfig):
         """
         Run the aframe model over the data
         """
+        if not hasattr(self, "model"):
+            raise RuntimeError(
+                "Aframe model weights were not loaded. "
+                "Re-initialize with load_weights=True."
+            )
         if data.shape[-1] < self.minimum_data_size:
             raise ValueError(
                 f"Data size {data.shape[-1]} is less than the minimum "

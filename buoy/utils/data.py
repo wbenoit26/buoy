@@ -24,6 +24,7 @@ def get_local_or_hf(
     repo_id: str,
     descriptor: str,
     revision: str | None = None,
+    cache_dir: str | Path | None = None,
 ) -> str:
     """
     Determine whether a given file exists locally or in a HuggingFace
@@ -39,6 +40,9 @@ def get_local_or_hf(
         revision:
             The HuggingFace repository revision (branch, tag, or commit
             hash) to download from. If None, uses the default branch.
+        cache_dir:
+            Local directory to use as the HuggingFace download cache.
+            If None, uses the default HuggingFace cache location.
 
     Returns:
         The path to the file.
@@ -53,7 +57,10 @@ def get_local_or_hf(
                 "or loading from cache"
             )
             return hf_hub_download(
-                repo_id=repo_id, filename=str(filename), revision=revision
+                repo_id=repo_id,
+                filename=str(filename),
+                revision=revision,
+                cache_dir=cache_dir,
             )
         except EntryNotFoundError as e:
             raise ValueError(

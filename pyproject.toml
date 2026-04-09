@@ -47,6 +47,9 @@ dev_template = "{tag}.post{ccount}+git.{sha}"
 requires = [ "setuptools>=77.0.3", "wheel", "setuptools-git-versioning>=2.0,<4",]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.package-data]
+buoy = ["py.typed"]
+
 [tool.hatch.build.targets.sdist]
 include = ["buoy"]
 
