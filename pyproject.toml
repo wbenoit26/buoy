@@ -34,6 +34,7 @@ dev = [
     "jupyter>=1.0.0,<2",
     "conda-lock>=2.5.1,<5",
     "prek>=0.1",
+    "ty>=0.0.29",
 ]
 
 [tool.uv]

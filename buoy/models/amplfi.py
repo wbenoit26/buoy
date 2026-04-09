@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
@@ -12,6 +13,7 @@ from buoy.utils.pe import postprocess_samples, run_amplfi
 if TYPE_CHECKING:
     from amplfi.train.architectures.flows import FlowArchitecture
     from amplfi.train.prior import AmplfiPrior
+    from amplfi.utils.result import AmplfiResult
 
 REPO_ID = "ML4GW/amplfi"
 
@@ -34,8 +36,8 @@ class AmplfiConfig:
 class Amplfi(AmplfiConfig):
     def __init__(
         self,
-        model_weights: str | None = "amplfi-hlv.ckpt",
-        config: str | None = "amplfi-hlv-config.yaml",
+        model_weights: str | Path = "amplfi-hlv.ckpt",
+        config: str | Path = "amplfi-hlv-config.yaml",
         device: str | None = None,
         revision: str | None = None,
     ):
@@ -124,7 +126,7 @@ class Amplfi(AmplfiConfig):
         # Reconfigure preprocessing after updating parameters
         self.configure_preprocessing()
 
-    def configure_preprocessing(self):
+    def configure_preprocessing(self) -> None:
         self.spectral_density = SpectralDensity(
             sample_rate=self.sample_rate,
             fftlength=self.fftlength,
@@ -151,7 +153,7 @@ class Amplfi(AmplfiConfig):
         t0: float,
         tc: float,
         samples_per_event: int,
-    ):
+    ) -> "AmplfiResult":
         if data.shape[-1] < self.minimum_data_size:
             raise ValueError(
                 f"Data size {data.shape[-1]} is less than the minimum "

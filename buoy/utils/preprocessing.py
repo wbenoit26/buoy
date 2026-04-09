@@ -14,11 +14,11 @@ class BackgroundSnapshotter(torch.nn.Module):
 
     def __init__(
         self,
-        psd_length,
-        kernel_length,
-        fduration,
-        sample_rate,
-        inference_sampling_rate,
+        psd_length: float,
+        kernel_length: float,
+        fduration: float,
+        sample_rate: float,
+        inference_sampling_rate: float,
     ) -> None:
         super().__init__()
         state_length = kernel_length + fduration + psd_length
@@ -26,7 +26,7 @@ class BackgroundSnapshotter(torch.nn.Module):
         self.state_size = int(state_length * sample_rate)
 
     def forward(self, update: Tensor, snapshot: Tensor) -> tuple[Tensor, ...]:
-        x = torch.cat([snapshot, update], axis=-1)
+        x = torch.cat([snapshot, update], dim=-1)
         snapshot = x[:, :, -self.state_size :]
         return x, snapshot
 
@@ -136,7 +136,7 @@ class BatchWhitener(torch.nn.Module):
         )
         self.whitener = Whiten(fduration, sample_rate, highpass, lowpass)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
         # Get the number of channels so we know how to
         # reshape `x` appropriately after unfolding to
         # ensure we have (batch, channels, time) shape
