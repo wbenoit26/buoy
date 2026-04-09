@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 
 import gwosc
+import gwosc.datasets
 import h5py
 import numpy as np
 import torch
@@ -19,11 +20,11 @@ STRAIN_CHANNELS = {
 
 
 def get_local_or_hf(
-    filename: Path,
+    filename: str | Path,
     repo_id: str,
     descriptor: str,
     revision: str | None = None,
-):
+) -> str:
     """
     Determine whether a given file exists locally or in a HuggingFace
     repository. If the file exists locally, return the filename.
@@ -44,7 +45,7 @@ def get_local_or_hf(
     """
     if Path(filename).exists():
         logging.info(f"Loading {descriptor} from {filename}")
-        return filename
+        return str(filename)
     else:
         try:
             logging.info(
@@ -70,7 +71,7 @@ def slice_amplfi_data(
     event_position: float,
     psd_length: float,
     fduration: float,
-):
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Slice the data to get the PSD window and kernel for amplfi
     """
@@ -113,7 +114,7 @@ def get_data(
     psd_length: float,
     datadir: Path,
     ifos: list[str] | None = None,
-):
+) -> tuple[np.ndarray, list[str], float, float]:
     event = str(event)
     if event.startswith("GW"):
         event_time = gwosc.datasets.event_gps(event)

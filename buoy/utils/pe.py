@@ -13,7 +13,8 @@ from ml4gw.waveforms.conversion import chirp_mass_and_mass_ratio_to_components
 from scipy.interpolate import interp1d
 
 if TYPE_CHECKING:
-    from amplfi.train.architectures.flows.base import FlowArchitecture
+    from amplfi.train.architectures.flows import FlowArchitecture
+    from amplfi.train.prior import AmplfiPrior
     from ml4gw.transforms import SpectralDensity, Whiten
 
 
@@ -27,22 +28,22 @@ def get_redshifts(distances, num_pts=10000):
     This process is much faster compared to astropy.cosmology
     APIs with lesser than a percent difference.
     """
-    func = cosmology.Planck18.luminosity_distance
+    func = cosmology.Planck18.luminosity_distance  # ty: ignore[unresolved-attribute]
     min_dist = np.min(distances)
     max_dist = np.max(distances)
-    z_min = cosmology.z_at_value(func=func, fval=min_dist * u.Mpc)
-    z_max = cosmology.z_at_value(func=func, fval=max_dist * u.Mpc)
+    z_min = cosmology.z_at_value(func=func, fval=min_dist * u.Mpc)  # ty: ignore[unresolved-attribute]
+    z_max = cosmology.z_at_value(func=func, fval=max_dist * u.Mpc)  # ty: ignore[unresolved-attribute]
     z_steps = np.linspace(
         z_min - (0.1 * z_min), z_max + (0.1 * z_max), num_pts
     )
-    lum_dists = cosmology.Planck18.luminosity_distance(z_steps)
+    lum_dists = cosmology.Planck18.luminosity_distance(z_steps)  # ty: ignore[unresolved-attribute]
     s = interp1d(lum_dists, z_steps)
     redshifts = s(distances)
     return redshifts
 
 
 def filter_samples(samples, parameter_sampler, inference_params):
-    net_mask = torch.ones(samples.shape[0], dtype=bool)
+    net_mask = torch.ones((samples.shape[0],), dtype=torch.bool)
     priors = parameter_sampler.priors
     for i, param in enumerate(inference_params):
         prior = priors[param]
@@ -73,7 +74,7 @@ def run_amplfi(
     amplfi_whitener: "Whiten",
     amplfi: "FlowArchitecture",
     std_scaler: "ChannelWiseScaler",
-    device: torch.device,
+    device: str | torch.device,
 ):
     # get pe data from the buffer and whiten it
     amplfi_psd_strain = amplfi_psd_strain.to(device)
@@ -99,7 +100,7 @@ def run_amplfi(
 
     # sample from the model and descale back to physical units
     logging.debug("Starting sampling")
-    samples = amplfi.sample(samples_per_event, context=(whitened, asds))
+    samples = amplfi.sample(samples_per_event, context=(whitened, asds))  # ty: ignore[invalid-argument-type]
     samples = samples.squeeze(1)
     logging.debug("Descaling samples")
     samples = samples.transpose(1, 0)
@@ -114,7 +115,7 @@ def postprocess_samples(
     samples: torch.Tensor,
     event_time: float,
     inference_params: list[str],
-    parameter_sampler: torch.nn.Module,
+    parameter_sampler: "AmplfiPrior",
 ) -> AmplfiResult:
     """
     Process samples into a bilby Result object
@@ -125,7 +126,7 @@ def postprocess_samples(
     phi_idx = inference_params.index("phi")
     dec_idx = inference_params.index("dec")
     ra = torch.remainder(
-        lal.GreenwichMeanSiderealTime(event_time) + samples[..., phi_idx],
+        lal.GreenwichMeanSiderealTime(event_time) + samples[..., phi_idx],  # ty: ignore[unresolved-attribute]
         torch.as_tensor(2 * torch.pi),
     )
     dec = samples[..., dec_idx]

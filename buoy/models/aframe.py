@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -34,8 +35,8 @@ class AframeConfig:
 class Aframe(AframeConfig):
     def __init__(
         self,
-        model_weights: str | None = "aframe.pt",
-        config: str | None = "aframe_config.yaml",
+        model_weights: str | Path = "aframe.pt",
+        config: str | Path = "aframe_config.yaml",
         device: str | None = None,
         revision: str | None = None,
     ):
@@ -86,7 +87,7 @@ class Aframe(AframeConfig):
         # Reconfigure preprocessing after updating parameters
         self.configure_preprocessing()
 
-    def configure_preprocessing(self):
+    def configure_preprocessing(self) -> None:
         self.whitener = BatchWhitener(
             kernel_length=self.kernel_length,
             sample_rate=self.sample_rate,
@@ -106,7 +107,7 @@ class Aframe(AframeConfig):
         ).to(self.device)
 
     @property
-    def time_offset(self):
+    def time_offset(self) -> float:
         """
         Estimate the time offset between the peak of the integrated
         outputs and the merger time of the signal
@@ -145,7 +146,7 @@ class Aframe(AframeConfig):
         self,
         data: torch.Tensor,
         t0: float,
-    ):
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Run the aframe model over the data
         """
