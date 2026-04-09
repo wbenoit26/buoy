@@ -4653,16 +4653,16 @@ wheels = [
 
 [[package]]
 name = "scitokens"
-version = "1.8.1"
+version = "1.9.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyjwt" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dc/13/13372ff4f4b6335819d2592b7f10ff1e56513261558b2a4162f6d6cba971/scitokens-1.8.1.tar.gz", hash = "sha256:f255383d9c7402b3fcd20d5ed26a6b407b4be8bec6f282d0af29b6275382b54d", size = 48564, upload-time = "2023-08-09T14:17:27.934Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/d3/f7a71bb402afbc602e1f6624514115ad59a588a1ad696274f957d532f35f/scitokens-1.9.7.tar.gz", hash = "sha256:9aabefbd68859e94a3909f3dc08bd73c0e7a9c08203c16de338c9512ace821e3", size = 54241, upload-time = "2026-03-13T21:28:51.67Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/17/916811af05e98d86b347f3a9d9c2d490ef9e5c75dc5980842bf946a70ba3/scitokens-1.8.1-py3-none-any.whl", hash = "sha256:a5455d85969cd7c7b341ed8691ea89e0e446bd414a734f8443752081b049b46c", size = 31190, upload-time = "2023-08-09T14:17:26.835Z" },
+    { url = "https://files.pythonhosted.org/packages/93/5b/ed5d8ce3d0e9d2bd38c7901d8131a346fe69d941357f92700bceee12b32e/scitokens-1.9.7-py3-none-any.whl", hash = "sha256:05a539ece3a114233e28c5b1552e5d1fbd13282c6ce683f5a073de116b228df0", size = 34527, upload-time = "2026-03-13T21:28:50.43Z" },
 ]
 
 [[package]]
