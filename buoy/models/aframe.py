@@ -11,10 +11,6 @@ from buoy.utils.preprocessing import BackgroundSnapshotter, BatchWhitener
 
 REPO_ID = "ML4GW/aframe"
 
-# TODO: Allow specification of a cache directory
-# TODO: When we have multiple model versions, provide
-# a way to specify which one to use
-
 
 @dataclass
 class AframeConfig:
@@ -40,6 +36,7 @@ class Aframe(AframeConfig):
         device: str | None = None,
         revision: str | None = None,
         load_weights: bool = True,
+        cache_dir: str | Path | None = None,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -52,6 +49,7 @@ class Aframe(AframeConfig):
                 repo_id=REPO_ID,
                 descriptor="Aframe model weights",
                 revision=revision,
+                cache_dir=cache_dir,
             )
             self.model = torch.jit.load(weights_path).to(self.device)
 
@@ -60,6 +58,7 @@ class Aframe(AframeConfig):
             repo_id=REPO_ID,
             descriptor="Aframe model config",
             revision=revision,
+            cache_dir=cache_dir,
         )
 
         parser = ArgumentParser()

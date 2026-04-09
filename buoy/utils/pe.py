@@ -149,8 +149,6 @@ def postprocess_samples(
     z_vals = get_redshifts(posterior["luminosity_distance"].numpy())
     posterior["chirp_mass_source"] = posterior["chirp_mass"] / (1 + z_vals)
 
-    # TODO remove
-    posterior["phi"] = ra
     posterior["ra"] = ra
     posterior["dec"] = dec
     posterior["distance"] = posterior["luminosity_distance"]

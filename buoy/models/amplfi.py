@@ -41,6 +41,7 @@ class Amplfi(AmplfiConfig):
         device: str | None = None,
         revision: str | None = None,
         load_weights: bool = True,
+        cache_dir: str | Path | None = None,
     ):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -52,6 +53,7 @@ class Amplfi(AmplfiConfig):
             repo_id=REPO_ID,
             descriptor="AMPLFI model config",
             revision=revision,
+            cache_dir=cache_dir,
         )
 
         parser = ArgumentParser()
@@ -75,6 +77,7 @@ class Amplfi(AmplfiConfig):
                 repo_id=REPO_ID,
                 descriptor="AMPLFI model weights",
                 revision=revision,
+                cache_dir=cache_dir,
             )
             model, scaler = self.load_model(
                 args.architecture,

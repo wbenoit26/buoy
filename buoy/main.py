@@ -17,6 +17,25 @@ from .utils.plotting import (
 )
 
 
+def _resolve_device(device: str | None) -> str:
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cpu":
+        warnings.warn(
+            "Device is set to 'cpu'. This will take about "
+            "15 minutes to run with default settings. "
+            "If a GPU is available, set '--device cuda'. ",
+            stacklevel=3,
+        )
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        raise ValueError(
+            f"Device is set to {device}, but no GPU is available. "
+            "Please set device to 'cpu' or move to a node with "
+            "a GPU."
+        )
+    return device
+
+
 def main(
     events: str | list[str],
     outdir: Path,
@@ -32,6 +51,7 @@ def main(
     amplfi_hlv_config: Path | None = None,
     aframe_revision: str | None = None,
     amplfi_revision: str | None = None,
+    model_cache_dir: Path | None = None,
     use_true_tc_for_amplfi: bool = False,
     ifos: list[str] | None = None,
     device: str | None = None,
@@ -92,6 +112,10 @@ def main(
             HuggingFace repository revision (branch, tag, or commit
             hash) for AMPLFI model weights and config. If None, uses
             the default branch.
+        model_cache_dir:
+            Local directory to use as the HuggingFace download cache
+            for model weights and configs. If None, uses the default
+            HuggingFace cache location (~/.cache/huggingface).
         use_true_tc_for_amplfi:
             If True, use the true time of coalescence for AMPLFI.
             Else, use the merger time inferred from Aframe.
@@ -136,23 +160,7 @@ def main(
     if seed is not None:
         torch.manual_seed(seed)
 
-    if device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    if device == "cpu":
-        warnings.warn(
-            "Device is set to 'cpu'. This will take about "
-            "15 minutes to run with default settings. "
-            "If a GPU is available, set '--device cuda'. ",
-            stacklevel=2,
-        )
-
-    if device.startswith("cuda") and not torch.cuda.is_available():
-        raise ValueError(
-            f"Device is set to {device}, but no GPU is available. "
-            "Please set device to 'cpu' or move to a node with "
-            "a GPU."
-        )
+    device = _resolve_device(device)
 
     logging.info("Setting up models")
 
@@ -162,6 +170,7 @@ def main(
         device=device,
         revision=aframe_revision,
         load_weights=run_aframe,
+        cache_dir=model_cache_dir,
     )
 
     amplfi_hl = Amplfi(
@@ -170,6 +179,7 @@ def main(
         device=device,
         revision=amplfi_revision,
         load_weights=run_amplfi,
+        cache_dir=model_cache_dir,
     )
 
     amplfi_hlv = Amplfi(
@@ -178,9 +188,17 @@ def main(
         device=device,
         revision=amplfi_revision,
         load_weights=run_amplfi,
+        cache_dir=model_cache_dir,
     )
 
-    # TODO: should we check that the sample rate for each model is the same?
+    if not (
+        aframe.sample_rate == amplfi_hl.sample_rate == amplfi_hlv.sample_rate
+    ):
+        raise ValueError(
+            f"Sample rate mismatch: Aframe={aframe.sample_rate}, "
+            f"AMPLFI-HL={amplfi_hl.sample_rate}, "
+            f"AMPLFI-HLV={amplfi_hlv.sample_rate}. All models must match."
+        )
 
     if not isinstance(events, list):
         events = [events]
