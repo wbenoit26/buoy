@@ -38,6 +38,7 @@ docs = [
 ]
 dev = [
     "pytest>=8.2.1,<10",
+    "coverage[toml]>=7.6",
     "jupyter>=1.0.0,<2",
     "conda-lock>=2.5.1,<5",
     "prek>=0.1",
@@ -77,3 +78,10 @@ ignore = ["W605", "E203"]
 # ignore asterisk imports and unused
 # import errors in __init__ files
 per-file-ignores =  {"**/__init__.py" = ["F401", "F403"]}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["buoy"]
+relative_files = true
