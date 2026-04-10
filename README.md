@@ -7,7 +7,7 @@
 
 Model weights (~320 MB total) are downloaded automatically from [HuggingFace](https://huggingface.co/ML4GW) on first use and cached locally.
 
-**Documentation:** https://ml4gw-buoy.readthedocs.io
+**Documentation:** https://ml4gw.github.io/buoy/
 
 ---
 
