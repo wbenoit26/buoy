@@ -1,9 +1,9 @@
 # buoy
-![PyPI - Version](https://img.shields.io/pypi/v/ml4gw)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ml4gw) 
-![GitHub License](https://img.shields.io/github/license/ML4GW/ml4gw)
-![Test status](https://github.com/ML4GW/ml4gw/actions/workflows/unit-tests.yaml/badge.svg)
-[![codecov](https://codecov.io/gh/ML4GW/ml4gw/branch/main/graph/badge.svg)](https://codecov.io/gh/ML4GW/ml4gw)
+![PyPI - Version](https://img.shields.io/pypi/v/ml4gw-buoy)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ml4gw-buoy) 
+![GitHub License](https://img.shields.io/github/license/ML4GW/buoy)
+![Test status](https://github.com/ML4GW/buoy/actions/workflows/unit-tests.yaml/badge.svg)
+[![codecov](https://codecov.io/gh/ML4GW/buoy/branch/main/graph/badge.svg)](https://codecov.io/gh/ML4GW/buoy)
 
 **buoy** deploys trained [Aframe](https://github.com/ML4GW/aframe) and [AMPLFI](https://github.com/ML4GW/amplfi) models on gravitational wave events, producing detection statistics and parameter estimation outputs.
 
