@@ -140,6 +140,7 @@ def test_main_reprocesses_event_when_force_true(
         f.create_dataset("ys", data=np.zeros(2))
         f.create_dataset("timing_integrated", data=np.zeros(2))
         f.create_dataset("signif_integrated", data=np.zeros(2))
+        f.attrs["predicted_tc"] = 0
     (datadir / "posterior_samples.dat").touch()
 
     main(
