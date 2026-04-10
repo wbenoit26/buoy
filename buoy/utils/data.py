@@ -80,7 +80,29 @@ def slice_amplfi_data(
     fduration: float,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Slice the data to get the PSD window and kernel for amplfi
+    Slice a strain tensor into the PSD background and inference window
+    required by AMPLFI.
+
+    Args:
+        data: Strain tensor of shape ``(1, num_channels, num_samples)``.
+        sample_rate: Sampling rate in Hz.
+        t0: GPS start time of ``data``.
+        tc: Coalescence time (GPS).
+        kernel_length: Length of the inference kernel in seconds.
+        event_position:
+            Position of the coalescence within the kernel in seconds
+            (range ``[0, kernel_length]``).
+        psd_length: Length of the PSD background segment in seconds.
+        fduration: Whitening filter duration in seconds.
+
+    Returns:
+        A ``(psd_data, window)`` tuple where ``psd_data`` has shape
+        ``(num_channels, psd_length * sample_rate)`` and ``window`` has
+        shape ``(num_channels, (kernel_length + fduration) * sample_rate)``.
+
+    Raises:
+        ValueError: If the requested window extends outside the bounds of
+            ``data``.
     """
     window_start = tc - t0 - event_position - fduration / 2
     window_start = int(sample_rate * window_start)

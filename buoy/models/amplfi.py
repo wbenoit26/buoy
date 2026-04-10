@@ -35,6 +35,15 @@ class AmplfiConfig:
 
 
 class Amplfi(AmplfiConfig, BuoyModel):
+    """
+    AMPLFI normalizing-flow model for rapid gravitational wave parameter
+    estimation.
+
+    Wraps a trained Lightning checkpoint and its associated preprocessing
+    pipeline. Config attributes are always loaded; the flow weights are
+    only loaded when ``load_weights=True``.
+    """
+
     def __init__(
         self,
         model_weights: str | Path = "amplfi-hlv.ckpt",
@@ -44,6 +53,28 @@ class Amplfi(AmplfiConfig, BuoyModel):
         load_weights: bool = True,
         cache_dir: str | Path | None = None,
     ):
+        """
+        Args:
+            model_weights:
+                Path to Lightning checkpoint (`.ckpt`) or filename in the
+                ``ML4GW/amplfi`` HuggingFace repository.
+            config:
+                Path to YAML config or filename in the ``ML4GW/amplfi``
+                HuggingFace repository.
+            device:
+                Device to run inference on (``"cpu"`` or ``"cuda"``).
+                If ``None``, uses CUDA when available, otherwise CPU.
+            revision:
+                HuggingFace repository revision (branch, tag, or commit
+                hash). If ``None``, uses the default branch.
+            load_weights:
+                If ``True``, download and load the flow weights. Set to
+                ``False`` to load only the config (e.g. to inspect
+                hyperparameters without allocating GPU memory).
+            cache_dir:
+                Local directory for HuggingFace download cache. If
+                ``None``, uses the default ``~/.cache/huggingface``.
+        """
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device

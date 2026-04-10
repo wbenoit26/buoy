@@ -29,6 +29,13 @@ dependencies = [
 buoy = "buoy.cli:cli"
 
 [dependency-groups]
+docs = [
+    "sphinx>=8.0",
+    "sphinx-rtd-theme",
+    "myst-parser",
+    "sphinx-autodoc-typehints",
+    "linkify-it-py",
+]
 dev = [
     "pytest>=8.2.1,<10",
     "jupyter>=1.0.0,<2",
