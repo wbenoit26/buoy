@@ -26,8 +26,8 @@ def plot_aframe_response(
     ys: np.ndarray,
     timing_integrated: np.ndarray,
     signif_integrated: np.ndarray,
-    whitened: np.ndarray,
-    whitened_times: np.ndarray,
+    whitened: np.ndarray | None,
+    whitened_times: np.ndarray | None,
     t0: float,
     tc: float,
     event_time: float,
@@ -39,22 +39,28 @@ def plot_aframe_response(
 
     # Shift the times to be relative to the event time
     times -= event_time
-    whitened_times -= event_time
     t0 -= event_time
     tc -= event_time
 
     stride = int(len(timing_integrated) / len(signif_integrated))
 
     plt.figure(figsize=(12, 8))
-    plt.plot(whitened_times, whitened[0], label="H1", alpha=0.3)
-    plt.plot(whitened_times, whitened[1], label="L1", alpha=0.3)
     plt.xlabel("Time from event (s)")
     plt.axvline(tc, color="tab:red", linestyle="--", label="Predicted time")
     plt.axvline(0, color="k", linestyle="--", label="Event time")
     plt.ylabel("Whitened strain")
     plt.legend(loc="upper left")
     plt.grid()
-    plt.twinx()
+
+    if whitened is not None:
+        if whitened_times is None:
+            raise ValueError(
+                "'whitened_times' cannot be None if 'whitened' is None"
+            )
+        whitened_times -= event_time
+        plt.plot(whitened_times, whitened[0], label="H1", alpha=0.3)
+        plt.plot(whitened_times, whitened[1], label="L1", alpha=0.3)
+        plt.twinx()
 
     plt.plot(times, ys, color="tab:gray", label="Network output", lw=2)
     plt.plot(

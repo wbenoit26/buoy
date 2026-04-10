@@ -136,7 +136,7 @@ def postprocess_samples(
     posterior_params = [
         "chirp_mass",
         "mass_ratio",
-        "luminosity_distance",
+        "distance",
         "inclination",
     ]
 
@@ -146,12 +146,11 @@ def postprocess_samples(
         posterior[param] = samples.T[idx].flatten()
 
     # add source frame chirp mass information
-    z_vals = get_redshifts(posterior["luminosity_distance"].numpy())
+    z_vals = get_redshifts(posterior["distance"].numpy())
     posterior["chirp_mass_source"] = posterior["chirp_mass"] / (1 + z_vals)
 
     posterior["ra"] = ra
     posterior["dec"] = dec
-    posterior["distance"] = posterior["luminosity_distance"]
     mass_1, mass_2 = chirp_mass_and_mass_ratio_to_components(
         posterior["chirp_mass"], posterior["mass_ratio"]
     )

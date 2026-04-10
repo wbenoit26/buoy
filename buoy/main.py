@@ -302,27 +302,30 @@ def main(
             result.save_posterior_samples(filename=amplfi_output_file)
 
         if generate_plots:
-            whitened_data_file = datadir / "whitened_data.npy"
-            if not whitened_data_file.exists():
-                logging.warning(
-                    "Whitened data not found, skipping plots that require it. "
-                    "Run with run_amplfi=True to generate whitened data."
-                )
-            else:
-                if not run_amplfi:
+            logging.info("Creating Q-plots")
+            q_plots(
+                data=data.squeeze().cpu().numpy(),
+                t0=t0,
+                plotdir=plotdir,
+                gpstime=event_time,
+                sample_rate=amplfi_model.sample_rate,
+                amplfi_highpass=amplfi_model.highpass,
+            )
+
+            if run_aframe:
+                whitened_data_file = datadir / "whitened_data.npy"
+                if whitened_data_file.exists():
                     whitened_arr = np.load(whitened_data_file)
                     whitened_times = whitened_arr[0]
                     whitened = whitened_arr[1:]
-
-                logging.info("Creating Q-plots")
-                q_plots(
-                    data=data.squeeze().cpu().numpy(),
-                    t0=t0,
-                    plotdir=plotdir,
-                    gpstime=event_time,
-                    sample_rate=amplfi_model.sample_rate,
-                    amplfi_highpass=amplfi_model.highpass,
-                )
+                else:
+                    logging.warning(
+                        "Whitened data not found, plotting only "
+                        "network output. Run with run_amplfi=True "
+                        "to generate whitened data."
+                    )
+                    whitened = None
+                    whitened_times = None
 
                 logging.info("Plotting Aframe response")
                 plot_aframe_response(
