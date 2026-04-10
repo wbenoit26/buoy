@@ -241,12 +241,16 @@ def main(
             times, ys, timing_integrated, signif_integrated = aframe(
                 data[:, :2], t0
             )
+            predicted_tc = (
+                times[np.argmax(timing_integrated)] + aframe.time_offset
+            )
             logging.info("Saving Aframe outputs")
             with h5py.File(aframe_output_file, "w") as f:
                 f.create_dataset("times", data=times)
                 f.create_dataset("ys", data=ys)
                 f.create_dataset("timing_integrated", data=timing_integrated)
                 f.create_dataset("signif_integrated", data=signif_integrated)
+                f.attrs["predicted_tc"] = predicted_tc
         else:
             logging.info("Loading saved Aframe outputs")
             if not aframe_output_file.exists():
@@ -259,11 +263,9 @@ def main(
                 ys = f["ys"][:]
                 timing_integrated = f["timing_integrated"][:]
                 signif_integrated = f["signif_integrated"][:]
+                predicted_tc = f.attrs["predicted_tc"]
 
-        if use_true_tc_for_amplfi:
-            tc = event_time
-        else:
-            tc = times[np.argmax(timing_integrated)] + aframe.time_offset
+        tc = event_time if use_true_tc_for_amplfi else predicted_tc
 
         if run_amplfi:
             logging.info("Running AMPLFI model")
