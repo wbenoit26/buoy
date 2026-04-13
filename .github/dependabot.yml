@@ -15,24 +15,14 @@ updates:
       development:
         dependency-type: "development"
         exclude-patterns:
-          - "Sphinx"
           - "sphinx*"
           - "myst*"
-          - "torchmetrics"
-          - "lightning"
-          - "rich"
-          - "gwpy"
-          - "jupyter"
+          - "linkify*"
       documentation:
         patterns:
-          - "Sphinx"
           - "sphinx*"
           - "myst*"
-          - "torchmetrics"
-          - "lightning"
-          - "rich"
-          - "gwpy"
-          - "jupyter"
+          - "linkify*"
 
     versioning-strategy: increase-if-necessary
 
