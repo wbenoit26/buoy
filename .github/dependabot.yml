@@ -11,18 +11,38 @@ updates:
 
     groups:
       production:
-        dependency-type: "production"
-      development:
-        dependency-type: "development"
-        exclude-patterns:
-          - "sphinx*"
-          - "myst*"
-          - "linkify*"
+        patterns:
+          - "amplfi"
+          - "ml4gw"
+          - "jsonargparse"
+          - "h5py"
+          - "numpy"
+          - "matplotlib"
+          - "gwpy"
+          - "ligo-skymap"
+          - "huggingface_hub"
+
       documentation:
         patterns:
           - "sphinx*"
           - "myst*"
-          - "linkify*"
+          - "linkify-it-py"
+          
+      development:
+        patterns: ["*"]
+        exclude-patterns:
+          - "amplfi"
+          - "ml4gw"
+          - "jsonargparse"
+          - "h5py"
+          - "numpy"
+          - "matplotlib"
+          - "gwpy"
+          - "ligo-skymap"
+          - "huggingface_hub"
+          - "sphinx*"
+          - "myst*"
+          - "linkify-it-py"
 
     versioning-strategy: increase-if-necessary
 
